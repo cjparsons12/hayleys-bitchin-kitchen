@@ -34,7 +34,8 @@ A web application for tracking and displaying daily recipes in a blog-like forma
 
 2. Start the application:
    ```bash
-   docker-compose up --build -d  # -d runs in background
+   ./start.sh  # Convenient script to start all services
+   # Or manually: docker-compose up --build -d
    ```
 
 3. Open your browser and navigate to:
@@ -150,7 +151,13 @@ View logs for specific services:
 docker-compose logs backend
 docker-compose logs frontend
 docker-compose logs db
+# Or use the stop script: ./stop.sh
 ```
+
+### Scripts
+
+- `./start.sh` - Start all services with health checks
+- `./stop.sh` - Stop and clean up containers
 
 ### Reset Database
 
