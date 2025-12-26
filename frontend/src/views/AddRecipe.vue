@@ -1,6 +1,6 @@
 <template>
-  <div class="add-recipe">
-    <h2>Add a New Recipe</h2>
+  <div class="add-recipe max-w-2xl mx-auto">
+    <h2 class="mb-4">Add a New Recipe</h2>
     <RecipeForm />
   </div>
 </template>
@@ -16,13 +16,6 @@ export default {
 }
 </script>
 
-<style scoped>
-.add-recipe {
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-h2 {
-  margin-bottom: 1rem;
-}
+<style>
+/* Using Tailwind classes */
 </style>

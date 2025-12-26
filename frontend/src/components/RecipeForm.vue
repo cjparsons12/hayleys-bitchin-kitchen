@@ -1,38 +1,41 @@
 <template>
-  <form @submit.prevent="submitRecipe" class="recipe-form">
-    <div class="form-group">
-      <label for="title">Title *</label>
+  <form @submit.prevent="submitRecipe" class="recipe-form flex flex-col gap-4">
+    <div class="form-group flex flex-col text-left">
+      <label for="title" class="font-bold mb-2">Title *</label>
       <input
         id="title"
         v-model="form.title"
         type="text"
         required
         placeholder="Recipe title"
+        class="p-2 border border-gray-300 rounded font-inherit"
       />
     </div>
-    <div class="form-group">
-      <label for="description">Description</label>
+    <div class="form-group flex flex-col text-left">
+      <label for="description" class="font-bold mb-2">Description</label>
       <textarea
         id="description"
         v-model="form.description"
         placeholder="Full recipe details (optional)"
         rows="5"
+        class="p-2 border border-gray-300 rounded font-inherit resize-y"
       ></textarea>
     </div>
-    <div class="form-group">
-      <label for="link">Link</label>
+    <div class="form-group flex flex-col text-left">
+      <label for="link" class="font-bold mb-2">Link</label>
       <input
         id="link"
         v-model="form.link"
         type="url"
         placeholder="URL to external recipe (optional)"
+        class="p-2 border border-gray-300 rounded font-inherit"
       />
     </div>
-    <button type="submit" :disabled="loading" class="submit-btn">
+    <button type="submit" :disabled="loading" class="submit-btn py-3 bg-green-600 text-white border-none rounded cursor-pointer text-lg transition-colors hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
       {{ loading ? 'Adding...' : 'Add Recipe' }}
     </button>
-    <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="success" class="success">Recipe added successfully!</p>
+    <p v-if="error" class="error text-red-500 font-bold">{{ error }}</p>
+    <p v-if="success" class="success text-green-600 font-bold">Recipe added successfully!</p>
   </form>
 </template>
 
@@ -78,62 +81,6 @@ export default {
 }
 </script>
 
-<style scoped>
-.recipe-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-}
-
-label {
-  font-weight: bold;
-  margin-bottom: 0.5rem;
-}
-
-input, textarea {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-family: inherit;
-}
-
-textarea {
-  resize: vertical;
-}
-
-.submit-btn {
-  padding: 0.75rem;
-  background-color: #42b883;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.3s;
-}
-
-.submit-btn:hover:not(:disabled) {
-  background-color: #369870;
-}
-
-.submit-btn:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-
-.error {
-  color: #e74c3c;
-  font-weight: bold;
-}
-
-.success {
-  color: #27ae60;
-  font-weight: bold;
-}
+<style>
+/* Using Tailwind classes */
 </style>

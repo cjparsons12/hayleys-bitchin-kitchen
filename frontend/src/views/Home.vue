@@ -1,6 +1,6 @@
 <template>
-  <div class="home">
-    <h2>Latest Recipes</h2>
+  <div class="home text-left">
+    <h2 class="mb-4">Latest Recipes</h2>
     <RecipeList />
   </div>
 </template>
@@ -16,12 +16,6 @@ export default {
 }
 </script>
 
-<style scoped>
-.home {
-  text-align: left;
-}
-
-h2 {
-  margin-bottom: 1rem;
-}
+<style>
+/* Using Tailwind classes */
 </style>

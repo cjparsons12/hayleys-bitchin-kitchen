@@ -1,17 +1,17 @@
 <template>
-  <div class="recipe-detail" v-if="recipe">
+  <div class="recipe-detail text-left max-w-3xl mx-auto" v-if="recipe">
     <h2>{{ recipe.title }}</h2>
-    <p class="date">Created: {{ formatDate(recipe.created_at) }}</p>
-    <div v-if="recipe.description" class="description">
+    <p class="date text-gray-600 text-sm">Created: {{ formatDate(recipe.created_at) }}</p>
+    <div v-if="recipe.description" class="description mt-8">
       <h3>Description</h3>
       <p>{{ recipe.description }}</p>
     </div>
-    <div v-if="recipe.link" class="link">
+    <div v-if="recipe.link" class="link mt-8">
       <h3>Link</h3>
-      <a :href="recipe.link" target="_blank">{{ recipe.link }}</a>
+      <a :href="recipe.link" target="_blank" class="text-green-600 no-underline hover:underline">{{ recipe.link }}</a>
     </div>
   </div>
-  <div v-else>
+  <div v-else class="text-center">
     <p>Loading recipe...</p>
   </div>
 </template>
@@ -43,28 +43,6 @@ export default {
 }
 </script>
 
-<style scoped>
-.recipe-detail {
-  text-align: left;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.date {
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.description, .link {
-  margin-top: 2rem;
-}
-
-.link a {
-  color: #42b883;
-  text-decoration: none;
-}
-
-.link a:hover {
-  text-decoration: underline;
-}
+<style>
+/* Using Tailwind classes */
 </style>

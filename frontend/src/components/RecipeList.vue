@@ -1,7 +1,7 @@
 <template>
-  <div class="recipe-list">
-    <div v-if="recipes.length === 0" class="no-recipes">
-      <p>No recipes yet. <router-link to="/add-recipe">Add one!</router-link></p>
+  <div class="recipe-list grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div v-if="recipes.length === 0" class="no-recipes col-span-full text-center py-8">
+      <p>No recipes yet. <router-link to="/add-recipe" class="text-green-600 no-underline hover:underline">Add one!</router-link></p>
     </div>
     <RecipeCard
       v-for="recipe in recipes"
@@ -36,25 +36,6 @@ export default {
 }
 </script>
 
-<style scoped>
-.recipe-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
-}
-
-.no-recipes {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 2rem;
-}
-
-.no-recipes a {
-  color: #42b883;
-  text-decoration: none;
-}
-
-.no-recipes a:hover {
-  text-decoration: underline;
-}
+<style>
+/* Using Tailwind classes */
 </style>
