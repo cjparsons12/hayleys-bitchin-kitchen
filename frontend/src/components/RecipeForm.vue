@@ -8,7 +8,7 @@
         type="text"
         required
         placeholder="Recipe title"
-        class="p-2 border border-gray-300 rounded font-inherit"
+        class="p-2 border border-slate-300 rounded font-inherit focus:border-blue-500 focus:outline-none"
       />
     </div>
     <div class="form-group flex flex-col text-left">
@@ -18,7 +18,7 @@
         v-model="form.description"
         placeholder="Full recipe details (optional)"
         rows="5"
-        class="p-2 border border-gray-300 rounded font-inherit resize-y"
+        class="p-2 border border-slate-300 rounded font-inherit resize-y focus:border-blue-500 focus:outline-none"
       ></textarea>
     </div>
     <div class="form-group flex flex-col text-left">
@@ -28,10 +28,10 @@
         v-model="form.link"
         type="url"
         placeholder="URL to external recipe (optional)"
-        class="p-2 border border-gray-300 rounded font-inherit"
+        class="p-2 border border-slate-300 rounded font-inherit focus:border-blue-500 focus:outline-none"
       />
     </div>
-    <button type="submit" :disabled="loading" class="submit-btn py-3 bg-green-600 text-white border-none rounded cursor-pointer text-lg transition-colors hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
+    <button type="submit" :disabled="loading" class="submit-btn py-3 bg-blue-600 text-white border-none rounded cursor-pointer text-lg transition-colors hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
       {{ loading ? 'Adding...' : 'Add Recipe' }}
     </button>
     <p v-if="error" class="error text-red-500 font-bold">{{ error }}</p>

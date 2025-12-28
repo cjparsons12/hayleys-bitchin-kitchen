@@ -1,14 +1,14 @@
 <template>
   <div class="recipe-detail text-left max-w-3xl mx-auto" v-if="recipe">
     <h2>{{ recipe.title }}</h2>
-    <p class="date text-gray-600 text-sm">Created: {{ formatDate(recipe.created_at) }}</p>
+    <p class="date text-slate-600 text-sm">Created: {{ formatDate(recipe.created_at) }}</p>
     <div v-if="recipe.description" class="description mt-8">
       <h3>Description</h3>
       <p>{{ recipe.description }}</p>
     </div>
     <div v-if="recipe.link" class="link mt-8">
       <h3>Link</h3>
-      <a :href="recipe.link" target="_blank" class="text-green-600 no-underline hover:underline">{{ recipe.link }}</a>
+      <a :href="recipe.link" target="_blank" class="text-blue-600 no-underline hover:underline">{{ recipe.link }}</a>
     </div>
   </div>
   <div v-else class="text-center">

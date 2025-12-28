@@ -1,7 +1,7 @@
 <template>
   <div class="recipe-list grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
     <div v-if="recipes.length === 0" class="no-recipes col-span-full text-center py-8">
-      <p>No recipes yet. <router-link to="/add-recipe" class="text-green-600 no-underline hover:underline">Add one!</router-link></p>
+      <p>No recipes yet. <router-link to="/add-recipe" class="text-blue-600 no-underline hover:underline">Add one!</router-link></p>
     </div>
     <RecipeCard
       v-for="recipe in recipes"

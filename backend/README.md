@@ -16,7 +16,15 @@ This is the FastAPI backend for Hayley's Bitchin' Kitchen, a recipe tracking app
      export DATABASE_URL="postgresql://user:password@localhost:5432/hbk"
      ```
 
-3. Run the application:
+3. (Optional) Seed the database with sample data:
+   ```bash
+   python seeder.py
+   ```
+
+4. Run the application:
+   ```bash
+   uvicorn main:app --reload
+   ```
    ```bash
    uvicorn main:app --reload
    ```
