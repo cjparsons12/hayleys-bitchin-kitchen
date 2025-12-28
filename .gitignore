@@ -60,3 +60,9 @@ logs/
 *.tmp
 *.swp
 *.swo
+
+# Uploaded Images
+backend/static/uploads/
+
+# Build outputs
+frontend/dist/
