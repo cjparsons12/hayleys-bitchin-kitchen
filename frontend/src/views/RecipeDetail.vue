@@ -1,7 +1,16 @@
 <template>
   <div class="recipe-detail text-left max-w-3xl mx-auto" v-if="recipe">
-    <h2>{{ recipe.title }}</h2>
-    <p class="date text-slate-600 text-sm">Created: {{ formatDate(recipe.created_at) }}</p>
+    <div class="flex flex-col md:flex-row gap-6 mb-6" v-if="recipe.image">
+      <img :src="`/api/static/uploads/${recipe.image}`" :alt="recipe.title" class="w-full md:w-1/2 h-64 md:h-96 object-cover rounded-lg" />
+      <div class="flex-1">
+        <h2 class="mb-2">{{ recipe.title }}</h2>
+        <p class="date text-slate-600 text-sm">Created: {{ formatDate(recipe.created_at) }}</p>
+      </div>
+    </div>
+    <div v-else>
+      <h2 class="mb-2">{{ recipe.title }}</h2>
+      <p class="date text-slate-600 text-sm">Created: {{ formatDate(recipe.created_at) }}</p>
+    </div>
     <div v-if="recipe.description" class="description mt-8">
       <h3>Description</h3>
       <p>{{ recipe.description }}</p>

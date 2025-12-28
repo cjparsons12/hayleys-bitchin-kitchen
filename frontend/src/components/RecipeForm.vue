@@ -12,6 +12,21 @@
       />
     </div>
     <div class="form-group flex flex-col text-left">
+      <label for="image" class="font-bold mb-2">Recipe Image *</label>
+      <input
+        id="image"
+        ref="imageInput"
+        type="file"
+        accept="image/*"
+        required
+        @change="handleImageChange"
+        class="p-2 border border-slate-300 rounded font-inherit focus:border-blue-500 focus:outline-none"
+      />
+      <div v-if="imagePreview" class="mt-2">
+        <img :src="imagePreview" alt="Recipe preview" class="max-w-full h-48 object-cover rounded" />
+      </div>
+    </div>
+    <div class="form-group flex flex-col text-left">
       <label for="description" class="font-bold mb-2">Description</label>
       <textarea
         id="description"
@@ -49,25 +64,58 @@ export default {
       form: {
         title: '',
         description: '',
-        link: ''
+        link: '',
+        image: ''
       },
+      selectedFile: null,
+      imagePreview: null,
       loading: false,
       error: null,
       success: false
     }
   },
   methods: {
+    handleImageChange(event) {
+      const file = event.target.files[0]
+      if (file) {
+        this.selectedFile = file
+        // Create preview
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          this.imagePreview = e.target.result
+        }
+        reader.readAsDataURL(file)
+      }
+    },
     async submitRecipe() {
-      if (!this.form.title.trim()) return
+      if (!this.form.title.trim() || !this.selectedFile) return
 
       this.loading = true
       this.error = null
       this.success = false
 
       try {
-        await axios.post('/api/recipes', this.form)
+        // First upload the image
+        const formData = new FormData()
+        formData.append('file', this.selectedFile)
+        const uploadResponse = await axios.post('/api/upload-image', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        
+        // Then create the recipe with the image filename
+        const recipeData = {
+          ...this.form,
+          image: uploadResponse.data.filename
+        }
+        
+        await axios.post('/api/recipes', recipeData)
         this.success = true
-        this.form = { title: '', description: '', link: '' }
+        this.form = { title: '', description: '', link: '', image: '' }
+        this.selectedFile = null
+        this.imagePreview = null
+        this.$refs.imageInput.value = ''
         // Optionally emit event to refresh list
         this.$emit('recipe-added')
       } catch (error) {

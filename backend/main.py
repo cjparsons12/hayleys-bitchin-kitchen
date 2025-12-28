@@ -1,11 +1,15 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, model_validator, validator
 from typing import List, Optional
 from datetime import datetime
 import models
 from database import engine, get_db
+import os
+import shutil
+import uuid
 
 # Create tables
 # models.Base.metadata.create_all(bind=engine)  # Moved to startup event
@@ -25,11 +29,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Create uploads directory if it doesn't exist
+UPLOAD_DIR = "static/uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 # Pydantic models
 class RecipeBase(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     link: Optional[str] = None
+    image: Optional[str] = None  # Optional for existing recipes, required for new ones
 
     @model_validator(mode='before')
     @classmethod
@@ -42,7 +54,7 @@ class RecipeBase(BaseModel):
         return values
 
 class RecipeCreate(RecipeBase):
-    pass
+    image: str  # Required for new recipes
 
 class Recipe(RecipeBase):
     id: int
@@ -51,6 +63,23 @@ class Recipe(RecipeBase):
 
     class Config:
         from_attributes = True
+
+# Image upload endpoint
+@app.post("/upload-image")
+async def upload_image(file: UploadFile = File(...)):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    # Generate unique filename
+    file_extension = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    
+    # Save file
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    return {"filename": unique_filename, "url": f"/static/uploads/{unique_filename}"}
 
 # API Endpoints
 @app.get("/recipes", response_model=List[Recipe])
