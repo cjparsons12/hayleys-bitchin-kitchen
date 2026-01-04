@@ -37,14 +37,22 @@
       ></textarea>
     </div>
     <div class="form-group flex flex-col text-left">
-      <label for="link" class="font-bold mb-2">Link</label>
+      <label for="additionalImages" class="font-bold mb-2">Additional Images (Optional)</label>
       <input
-        id="link"
-        v-model="form.link"
-        type="url"
-        placeholder="URL to external recipe (optional)"
+        id="additionalImages"
+        ref="additionalImagesInput"
+        type="file"
+        accept="image/*"
+        multiple
+        @change="handleAdditionalImagesChange"
         class="p-2 border border-slate-300 rounded font-inherit focus:border-blue-500 focus:outline-none"
       />
+      <div v-if="additionalImagesPreviews.length > 0" class="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
+        <div v-for="(preview, index) in additionalImagesPreviews" :key="index" class="relative">
+          <img :src="preview" alt="Additional image preview" class="w-full h-24 object-cover rounded" />
+          <button type="button" @click="removeAdditionalImage(index)" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs hover:bg-red-600">×</button>
+        </div>
+      </div>
     </div>
     <button type="submit" :disabled="loading" class="submit-btn py-3 bg-blue-600 text-white border-none rounded cursor-pointer text-lg transition-colors hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
       {{ loading ? 'Adding...' : 'Add Recipe' }}
@@ -69,23 +77,30 @@ export default {
       },
       selectedFile: null,
       imagePreview: null,
+      additionalImagesFiles: [],
+      additionalImagesPreviews: [],
       loading: false,
       error: null,
       success: false
     }
   },
   methods: {
-    handleImageChange(event) {
-      const file = event.target.files[0]
-      if (file) {
-        this.selectedFile = file
-        // Create preview
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          this.imagePreview = e.target.result
+    handleAdditionalImagesChange(event) {
+      const files = Array.from(event.target.files)
+      files.forEach(file => {
+        if (file.type.startsWith('image/')) {
+          this.additionalImagesFiles.push(file)
+          const reader = new FileReader()
+          reader.onload = (e) => {
+            this.additionalImagesPreviews.push(e.target.result)
+          }
+          reader.readAsDataURL(file)
         }
-        reader.readAsDataURL(file)
-      }
+      })
+    },
+    removeAdditionalImage(index) {
+      this.additionalImagesFiles.splice(index, 1)
+      this.additionalImagesPreviews.splice(index, 1)
     },
     async submitRecipe() {
       if (!this.form.title.trim() || !this.selectedFile) return
@@ -110,12 +125,31 @@ export default {
           image: uploadResponse.data.filename
         }
         
-        await axios.post('/api/recipes', recipeData)
+        const response = await axios.post('/api/recipes', recipeData)
         this.success = true
+        
+        // Upload additional images if any
+        if (this.additionalImagesFiles.length > 0) {
+          for (const imageFile of this.additionalImagesFiles) {
+            const formData = new FormData()
+            formData.append('file', imageFile)
+            await axios.post(`/api/recipes/${response.data.id}/images`, formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data'
+              }
+            })
+          }
+        }
+        
         this.form = { title: '', description: '', link: '', image: '' }
         this.selectedFile = null
         this.imagePreview = null
+        this.additionalImagesFiles = []
+        this.additionalImagesPreviews = []
         this.$refs.imageInput.value = ''
+        if (this.$refs.additionalImagesInput) {
+          this.$refs.additionalImagesInput.value = ''
+        }
         // Optionally emit event to refresh list
         this.$emit('recipe-added')
       } catch (error) {

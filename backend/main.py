@@ -37,6 +37,17 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Pydantic models
+class RecipeImageBase(BaseModel):
+    image_filename: str
+
+class RecipeImage(RecipeImageBase):
+    id: int
+    recipe_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class RecipeBase(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
@@ -60,6 +71,7 @@ class Recipe(RecipeBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    additional_images: List[RecipeImage] = []
 
     class Config:
         from_attributes = True
@@ -125,3 +137,55 @@ def delete_recipe(recipe_id: int, db: Session = Depends(get_db)):
     db.delete(db_recipe)
     db.commit()
     return {"message": "Recipe deleted"}
+
+# Additional images endpoints
+@app.post("/recipes/{recipe_id}/images", response_model=RecipeImage)
+async def add_recipe_image(recipe_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    # Check if recipe exists
+    recipe = db.query(models.Recipe).filter(models.Recipe.id == recipe_id).first()
+    if recipe is None:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    # Generate unique filename
+    file_extension = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    
+    # Save file
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Create database entry
+    db_image = models.RecipeImage(recipe_id=recipe_id, image_filename=unique_filename)
+    db.add(db_image)
+    db.commit()
+    db.refresh(db_image)
+    return db_image
+
+@app.delete("/recipes/{recipe_id}/images/{image_id}")
+def delete_recipe_image(recipe_id: int, image_id: int, db: Session = Depends(get_db)):
+    # Check if recipe exists
+    recipe = db.query(models.Recipe).filter(models.Recipe.id == recipe_id).first()
+    if recipe is None:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    
+    # Find the image
+    db_image = db.query(models.RecipeImage).filter(
+        models.RecipeImage.id == image_id,
+        models.RecipeImage.recipe_id == recipe_id
+    ).first()
+    if db_image is None:
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    # Delete file from filesystem
+    file_path = os.path.join(UPLOAD_DIR, db_image.image_filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    
+    # Delete from database
+    db.delete(db_image)
+    db.commit()
+    return {"message": "Image deleted"}

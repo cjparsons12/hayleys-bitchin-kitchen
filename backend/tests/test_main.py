@@ -38,16 +38,17 @@ def setup_database():
     Base.metadata.drop_all(bind=engine)
 
 def test_create_recipe():
-    response = client.post("/recipes", json={"title": "Test Recipe", "description": "Test description"})
+    response = client.post("/recipes", json={"title": "Test Recipe", "description": "Test description", "image": "test-image.jpg"})
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == "Test Recipe"
     assert data["description"] == "Test description"
+    assert data["image"] == "test-image.jpg"
     assert "id" in data
 
 def test_get_recipes():
     # Create a recipe first
-    client.post("/recipes", json={"link": "http://example.com"})
+    client.post("/recipes", json={"link": "http://example.com", "image": "test-image2.jpg"})
     response = client.get("/recipes")
     assert response.status_code == 200
     data = response.json()
@@ -55,7 +56,7 @@ def test_get_recipes():
 
 def test_get_recipe():
     # Create a recipe
-    create_response = client.post("/recipes", json={"title": "Another Recipe"})
+    create_response = client.post("/recipes", json={"title": "Another Recipe", "image": "test-image3.jpg"})
     recipe_id = create_response.json()["id"]
     response = client.get(f"/recipes/{recipe_id}")
     assert response.status_code == 200
@@ -68,16 +69,16 @@ def test_get_recipe_not_found():
 
 def test_update_recipe():
     # Create a recipe
-    create_response = client.post("/recipes", json={"title": "Old Title"})
+    create_response = client.post("/recipes", json={"title": "Old Title", "image": "test-image4.jpg"})
     recipe_id = create_response.json()["id"]
-    response = client.put(f"/recipes/{recipe_id}", json={"title": "New Title"})
+    response = client.put(f"/recipes/{recipe_id}", json={"title": "New Title", "image": "test-image4.jpg"})
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == "New Title"
 
 def test_delete_recipe():
     # Create a recipe
-    create_response = client.post("/recipes", json={"title": "To Delete"})
+    create_response = client.post("/recipes", json={"title": "To Delete", "image": "test-image5.jpg"})
     recipe_id = create_response.json()["id"]
     response = client.delete(f"/recipes/{recipe_id}")
     assert response.status_code == 200
