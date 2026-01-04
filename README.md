@@ -32,10 +32,9 @@ A web application for tracking and displaying daily recipes in a blog-like forma
    cd hayleys-bitchin-kitchen
    ```
 
-2. Start the application:
+2. Start the application in development mode:
    ```bash
-   ./start.sh  # Convenient script to start all services
-   # Or manually: docker-compose up --build -d
+   ./start.sh  # Development mode with hot-reload (default)
    ```
 
 3. Open your browser and navigate to:
@@ -43,13 +42,45 @@ A web application for tracking and displaying daily recipes in a blog-like forma
    - Backend API: http://localhost:8000
    - Database: localhost:5432 (accessible via tools like pgAdmin)
 
-### Development
+### Development vs Production
 
-For development, the containers will hot-reload on code changes.
+This project supports two modes:
 
-- Frontend dev server runs on port 3000 with hot reloading
+**Development Mode (Default):**
+- Code changes are reflected immediately without rebuilding containers
+- Frontend runs on port 3000 with hot reloading
 - Backend runs on port 8000 with auto-restart
 - Database data persists in a Docker volume
+
+**Production Mode:**
+- Optimized for deployment with code baked into containers
+- Frontend serves static files via nginx on port 80
+- Use when deploying to production environments
+
+```bash
+./start.sh --prod  # Production mode
+```
+
+### Rebuilding Containers
+
+In development mode, most code changes are reflected immediately. However, rebuild when dependencies change:
+
+**Rebuild Frontend (when package.json changes):**
+```bash
+docker-compose build frontend && docker-compose up -d
+```
+
+**Rebuild Backend (when requirements.txt changes):**
+```bash
+docker-compose build backend && docker-compose up -d
+```
+
+**Rebuild Both:**
+```bash
+docker-compose build && docker-compose up -d
+```
+
+For production mode, containers are always rebuilt on start.
 
 ### API Endpoints
 
@@ -63,22 +94,23 @@ For development, the containers will hot-reload on code changes.
 
 ```
 .
-├── backend/          # FastAPI backend
-│   ├── main.py       # API routes
-│   ├── models.py     # SQLAlchemy models
-│   ├── database.py   # Database configuration
-│   ├── Dockerfile    # Backend container
+├── backend/              # FastAPI backend
+│   ├── main.py           # API routes
+│   ├── models.py         # SQLAlchemy models
+│   ├── database.py       # Database configuration
+│   ├── Dockerfile        # Backend container
 │   └── requirements.txt
-├── frontend/         # Vue.js frontend
+├── frontend/             # Vue.js frontend
 │   ├── src/
 │   │   ├── components/
 │   │   ├── views/
 │   │   └── router/
-│   ├── Dockerfile    # Production container
-│   ├── Dockerfile.dev # Development container
+│   ├── Dockerfile        # Production container
+│   ├── Dockerfile.dev    # Development container
 │   └── package.json
-├── docker-compose.yml # Main compose file
-├── .env              # Environment variables
+├── docker-compose.yml    # Development compose file (with volumes)
+├── docker-compose.prod.yml # Production compose file (no volumes)
+├── .env                  # Environment variables
 └── README.md
 ```
 
@@ -96,26 +128,26 @@ Configure the following in `.env`:
 
 ## Production Deployment
 
-For production deployment:
+For production deployment, use the production mode which builds optimized containers:
 
-1. Update the frontend Dockerfile to use production build
-2. Configure nginx to proxy API calls to the backend
-3. Use environment variables for API base URL
-4. Secure database credentials
-5. Set up proper CORS origins
-
-Example production docker-compose override:
-
-```yaml
-version: '3.8'
-services:
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile  # Use production Dockerfile
-    environment:
-      - VITE_API_BASE=http://backend:8000
+```bash
+./start.sh --prod  # Builds and starts production containers
 ```
+
+Key differences in production:
+- Frontend serves static files via nginx on port 80
+- Code is baked into containers (no volume mounts)
+- Optimized for performance and security
+
+### Production Configuration
+
+1. Update environment variables for production URLs
+2. Configure nginx to proxy API calls to the backend
+3. Set up proper CORS origins
+4. Secure database credentials
+5. Use environment-specific .env files
+
+The production compose file (`docker-compose.prod.yml`) uses the production Dockerfile for the frontend, which builds the Vue.js app and serves it with nginx.
 
 ## Testing
 
@@ -147,25 +179,43 @@ Add tests in `frontend/` as needed (e.g., with Vitest).
 
 View logs for specific services:
 
+**Development mode:**
 ```bash
 docker-compose logs backend
 docker-compose logs frontend
 docker-compose logs db
-# Or use the stop script: ./stop.sh
 ```
+
+**Production mode:**
+```bash
+docker-compose -f docker-compose.prod.yml logs backend
+docker-compose -f docker-compose.prod.yml logs frontend
+docker-compose -f docker-compose.prod.yml logs db
+```
+
+Or use the stop script: `./stop.sh` or `./stop.sh --prod`
 
 ### Scripts
 
-- `./start.sh` - Start all services with health checks
-- `./stop.sh` - Stop and clean up containers
+- `./start.sh` - Start all services in development mode with health checks
+- `./start.sh --prod` - Start all services in production mode
+- `./stop.sh` - Stop development services and clean up containers
+- `./stop.sh --prod` - Stop production services and clean up containers
 
 ### Reset Database
 
 To reset the database:
 
+**Development mode:**
 ```bash
 docker-compose down -v  # Remove volumes
 docker-compose up --build
+```
+
+**Production mode:**
+```bash
+docker-compose -f docker-compose.prod.yml down -v  # Remove volumes
+docker-compose -f docker-compose.prod.yml up --build
 ```
 
 ## Contributing
