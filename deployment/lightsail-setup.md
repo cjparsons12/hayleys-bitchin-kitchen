@@ -115,38 +115,43 @@ cd hayleys-bitchin-kitchen
 
 ### 2. Create Environment File
 
+**Quick setup from template:**
+
 ```bash
+# Copy production template
+cp .env.production .env
+
+# Edit with your values
 nano .env
 ```
 
-Add the following (replace with your values):
+Update these required values:
 
 ```env
-# Required: Strong password for admin access
+# REQUIRED: Strong password for admin access
 ADMIN_PASSWORD=your-very-secure-password-here
 
-# Production settings
-NODE_ENV=production
-PORT=3000
-LOG_LEVEL=info
+# REQUIRED: Your domain name (for HTTPS)
+DOMAIN=yourdomain.com
 
-# Database path (inside container)
-DATABASE_PATH=/app/data/database.sqlite
-
-# CORS - set to your domain or * for all
-CORS_ORIGIN=*
-
-# Rate limiting
-RATE_LIMIT_ADMIN=10
-RATE_LIMIT_PUBLIC=60
+# Optional: Adjust production settings
+LOG_LEVEL=warn
+CORS_ORIGIN=https://yourdomain.com
+ADMIN_RATE_LIMIT=5
+PUBLIC_RATE_LIMIT=100
 ```
 
 **Important:** 
 - Use a **strong, unique password** for `ADMIN_PASSWORD`
+- Set your actual `DOMAIN` for automatic HTTPS
 - Never commit `.env` to git
 - If you change the password later, all JWT tokens will be invalidated
 
 Save and exit: `Ctrl+X`, then `Y`, then `Enter`
+
+### Alternative: Manual Setup
+
+If `.env.production` isn't available, see `.env.example` in the repository for all available configuration options.
 
 ### 3. Create Data Directories
 
@@ -156,27 +161,48 @@ mkdir -p data backups
 
 ### 4. Build and Start Application
 
-```bash
-# Build and start containers
-docker-compose up -d --build
+**For production deployment with HTTPS:**
 
-# View logs (optional)
-docker-compose logs -f
+```bash
+# Build and start with production compose file (includes Caddy)
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# View logs
+docker-compose -f docker-compose.prod.yml logs -f
 
 # Press Ctrl+C to exit logs
 ```
+
+**For development/testing (no HTTPS):**
+
+```bash
+# Build and start with basic compose file
+docker-compose up -d --build
+```
+
+The production setup includes:
+- ✅ Automatic HTTPS via Caddy + Let's Encrypt
+- ✅ Automatic certificate renewal
+- ✅ HTTP to HTTPS redirect
+- ✅ Security headers
+- ✅ Health-check based startup
 
 ### 5. Verify Deployment
 
 ```bash
 # Check container status
-docker-compose ps
+docker-compose -f docker-compose.prod.yml ps
 
-# Test API
+# Test API (local)
 curl http://localhost:3000/api/recipes
 
 # Should return: {"recipes":[]}
+
+# Test via HTTPS (replace with your domain)
+curl https://yourdomain.com/api/recipes
 ```
+
+If using `docker-compose.prod.yml`, HTTPS should work automatically once DNS propagates!
 
 ---
 
@@ -214,110 +240,104 @@ curl http://localhost:3000/api/recipes
 
 ---
 
-## Step 7: Configure HTTPS with Caddy (Recommended)
+## Step 7: Configure HTTPS with Caddy
+
+### Option A: Using docker-compose.prod.yml (Recommended - Easiest!)
+
+If you deployed with `docker-compose.prod.yml`, **HTTPS is already configured!** Caddy automatically:
+- ✅ Obtains Let's Encrypt SSL certificate
+- ✅ Renews certificates automatically
+- ✅ Redirects HTTP to HTTPS
+- ✅ Adds security headers
+
+Just make sure:
+1. Your `DOMAIN` is set correctly in `.env`
+2. DNS points to your server's IP
+3. Ports 80 and 443 are open in firewall
+
+That's it! No manual configuration needed.
+
+### Option B: Manual Caddy Setup (if using docker-compose.yml)
 
 ### Why HTTPS?
 - **Required for JWT security** (spec states this is mandatory)
 - Encrypts all traffic including passwords
 - Better SEO and user trust
 
-### Using Caddy (Easiest Method)
+### Manual Setup Steps
 
-1. **Create Caddyfile**
+1. **Ensure Caddyfile exists**
 
 ```bash
 cd ~/hayleys-bitchin-kitchen
-nano Caddyfile
+# Caddyfile should already exist from repository
+cat Caddyfile
 ```
 
-Add:
-
-```
-your-domain.com {
-    reverse_proxy localhost:3000
-}
-```
-
-2. **Update docker-compose.yml**
+2. **Update .env with domain**
 
 ```bash
-nano docker-compose.yml
+nano .env
+# Add or update: DOMAIN=yourdomain.com
 ```
-
-Add Caddy service:
-
-```yaml
-version: '3.8'
-
-services:
-  app:
-    build: .
-    container_name: hbk-app
-    ports:
-      - "3000:3000"
-    environment:
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - NODE_ENV=production
-      - DATABASE_PATH=/app/data/database.sqlite
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - CORS_ORIGIN=${CORS_ORIGIN:-*}
-    volumes:
-      - ./data:/app/data
-      - ./backups:/app/backups
-    restart: unless-stopped
-
-  caddy:
-    image: caddy:2-alpine
-    container_name: hbk-caddy
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
-    restart: unless-stopped
-
-volumes:
-  caddy_data:
-  caddy_config:
-```
-
-3. **Restart Services**
-
-```bash
-docker-compose down
-docker-compose up -d --build
-```
-
-Caddy will automatically obtain and renew Let's Encrypt SSL certificates!
 
 ---
 
 ## Step 8: Set Up Automated Backups
 
-### Daily Database Backup
+### Using Automated Backup Script (Recommended)
+
+The repository includes ready-to-use backup scripts:
+
+```bash
+# Test backup script
+./scripts/backup.sh
+
+# Test restore script (lists available backups)
+./scripts/restore.sh
+```
+
+### Set Up Daily Automated Backups
 
 ```bash
 # Edit crontab
 crontab -e
 ```
 
-Add these lines:
+Add this line for daily backups at 2 AM:
 
 ```bash
-# Daily backup at 2 AM
-0 2 * * * docker exec hbk-app sqlite3 /app/data/database.sqlite ".backup /app/backups/backup-$(date +\%Y\%m\%d).sqlite"
-
-# Delete backups older than 7 days
-0 3 * * * find ~/hayleys-bitchin-kitchen/backups -name "backup-*.sqlite" -mtime +7 -delete
+# Daily database backup at 2 AM with 30-day retention
+0 2 * * * cd ~/hayleys-bitchin-kitchen && ./scripts/backup.sh >> ~/backup.log 2>&1
 ```
 
-Save and exit.
+The backup script automatically:
+- ✅ Creates timestamped backups
+- ✅ Compresses backups to save space
+- ✅ Rotates old backups (keeps last 30 days)
+- ✅ Logs all operations
 
 ### Manual Backup Anytime
 
 ```bash
+cd ~/hayleys-bitchin-kitchen
+./scripts/backup.sh
+```
+
+### Restore from Backup
+
+```bash
+# Interactive restore (shows list of backups)
+./scripts/restore.sh
+
+# Direct restore from specific backup
+./scripts/restore.sh backups/database-20260204-140530.sqlite.gz
+```
+
+### Legacy Manual Method
+
+```bash
+# Manual backup
 cp ~/hayleys-bitchin-kitchen/data/database.sqlite ~/backup-$(date +%Y%m%d).sqlite
 ```
 
@@ -325,24 +345,52 @@ cp ~/hayleys-bitchin-kitchen/data/database.sqlite ~/backup-$(date +%Y%m%d).sqlit
 
 ## Step 9: Updating the Application
 
-### Pull Latest Code
+### Automated Deployment (Recommended)
+
+Use the automated deployment script for zero-downtime updates:
 
 ```bash
 cd ~/hayleys-bitchin-kitchen
+./deployment/deploy.sh
+```
+
+The deploy script automatically:
+- ✅ Pulls latest code from git
+- ✅ Validates environment configuration
+- ✅ Creates pre-deployment backup
+- ✅ Builds new Docker image
+- ✅ Performs zero-downtime rolling update
+- ✅ Runs health checks
+- ✅ Cleans up old images
+
+### CI/CD with GitHub Actions (Optional)
+
+For automatic deployments on every push to main:
+
+1. **Set up GitHub Secrets** in your repository:
+   - `LIGHTSAIL_SSH_KEY` - Your SSH private key
+   - `LIGHTSAIL_HOST` - Your server IP or domain
+   - `LIGHTSAIL_USER` - Usually `ubuntu`
+   - `PROJECT_PATH` - Path to project (e.g., `/home/ubuntu/hayleys-bitchin-kitchen`)
+
+2. **Push to main branch** - deployment happens automatically!
+
+3. **Monitor deployment** in GitHub Actions tab
+
+### Manual Deployment (Legacy Method)
+
+```bash
+cd ~/hayleys-bitchin-kitchen
+
+# Pull latest code
 git pull origin main
-```
 
-### Rebuild and Restart
+# Rebuild and restart
+docker-compose -f docker-compose.prod.yml down
+docker-compose -f docker-compose.prod.yml up -d --build
 
-```bash
-docker-compose down
-docker-compose up -d --build
-```
-
-### View Logs
-
-```bash
-docker-compose logs -f
+# View logs
+docker-compose -f docker-compose.prod.yml logs -f
 ```
 
 ---
@@ -352,20 +400,23 @@ docker-compose logs -f
 ### View Application Logs
 
 ```bash
-# All services
-docker-compose logs -f
+# All services (production)
+docker-compose -f docker-compose.prod.yml logs -f
 
 # Just app
-docker-compose logs -f app
+docker-compose -f docker-compose.prod.yml logs -f app
+
+# Just Caddy (HTTPS proxy)
+docker-compose -f docker-compose.prod.yml logs -f caddy
 
 # Last 100 lines
-docker-compose logs --tail=100 app
+docker-compose -f docker-compose.prod.yml logs --tail=100 app
 ```
 
 ### Check Container Status
 
 ```bash
-docker-compose ps
+docker-compose -f docker-compose.prod.yml ps
 ```
 
 ### Check Disk Space
@@ -373,18 +424,19 @@ docker-compose ps
 ```bash
 df -h
 du -sh ~/hayleys-bitchin-kitchen/data/
+du -sh ~/hayleys-bitchin-kitchen/backups/
 ```
 
 ### Restart Services
 
 ```bash
-docker-compose restart
+docker-compose -f docker-compose.prod.yml restart
 ```
 
 ### Stop Services
 
 ```bash
-docker-compose down
+docker-compose -f docker-compose.prod.yml down
 ```
 
 ---

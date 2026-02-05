@@ -1,0 +1,51 @@
+{
+    # Global options
+    admin off
+    # Uncomment for staging Let's Encrypt (testing)
+    # acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+# Replace with your actual domain
+{$DOMAIN:localhost} {
+    # Enable compression
+    encode gzip
+
+    # Reverse proxy to app container
+    reverse_proxy app:3000 {
+        # Health check
+        health_uri /api/recipes
+        health_interval 10s
+        health_timeout 5s
+        health_status 2xx
+    }
+
+    # Security headers
+    header {
+        # Enable HSTS
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Prevent clickjacking
+        X-Frame-Options "SAMEORIGIN"
+        # Prevent MIME sniffing
+        X-Content-Type-Options "nosniff"
+        # XSS Protection
+        X-XSS-Protection "1; mode=block"
+        # Referrer Policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Remove Server header
+        -Server
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 100mb
+            roll_keep 5
+            roll_keep_for 720h
+        }
+    }
+}
+
+# Redirect www to non-www (optional - uncomment and customize)
+# www.{$DOMAIN:localhost} {
+#     redir https://{$DOMAIN}{uri} permanent
+# }

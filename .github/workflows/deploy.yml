@@ -1,0 +1,66 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    name: Deploy to Lightsail
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          SSH_HOST: ${{ secrets.LIGHTSAIL_HOST }}
+          SSH_USER: ${{ secrets.LIGHTSAIL_USER }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+      
+      - name: Deploy to server
+        env:
+          SSH_HOST: ${{ secrets.LIGHTSAIL_HOST }}
+          SSH_USER: ${{ secrets.LIGHTSAIL_USER }}
+          PROJECT_PATH: ${{ secrets.PROJECT_PATH }}
+        run: |
+          ssh -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST << 'EOF'
+            set -e
+            
+            echo "=== Starting deployment ==="
+            cd ${{ secrets.PROJECT_PATH }}
+            
+            # Run deployment script
+            if [ -f deployment/deploy.sh ]; then
+              bash deployment/deploy.sh
+            else
+              echo "Error: deployment/deploy.sh not found"
+              exit 1
+            fi
+            
+            echo "=== Deployment completed ==="
+          EOF
+      
+      - name: Verify deployment
+        env:
+          SSH_HOST: ${{ secrets.LIGHTSAIL_HOST }}
+          SSH_USER: ${{ secrets.LIGHTSAIL_USER }}
+          PROJECT_PATH: ${{ secrets.PROJECT_PATH }}
+        run: |
+          ssh -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST << 'EOF'
+            cd ${{ secrets.PROJECT_PATH }}
+            docker-compose -f docker-compose.prod.yml ps
+          EOF
+      
+      - name: Cleanup SSH
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key

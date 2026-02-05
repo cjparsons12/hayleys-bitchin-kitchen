@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hbk-app
+    restart: always
+    environment:
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - PORT=3000
+      - NODE_ENV=production
+      - DB_PATH=${DB_PATH:-./data/database.sqlite}
+      - LOG_LEVEL=${LOG_LEVEL:-warn}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - ADMIN_RATE_LIMIT=${ADMIN_RATE_LIMIT:-5}
+      - PUBLIC_RATE_LIMIT=${PUBLIC_RATE_LIMIT:-100}
+    volumes:
+      - ./data:/app/data
+      - ./backups:/app/backups
+    networks:
+      - hbk-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/recipes"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Don't expose port directly - only accessible through Caddy
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: hbk-caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3 support
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - hbk-network
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+
+networks:
+  hbk-network:
+    driver: bridge
+
+volumes:
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
