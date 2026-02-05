@@ -17,6 +17,7 @@ A simple, mobile-friendly blog website where authorized users can post recipe li
 ### **Recommended Stack:**
 - **Frontend:** Vue 3 with Vite
 - **Backend:** Node.js with Express
+- **Authentication:** JWT (jsonwebtoken)
 - **Database:** SQLite (file-based, no separate DB server needed)
 - **Scraping:** Metascraper or similar Open Graph scraping library
 - **Containerization:** Docker with Docker Compose
@@ -84,8 +85,11 @@ A simple, mobile-friendly blog website where authorized users can post recipe li
 
 **Authentication:**
 - Password prompt on page load
-- Store auth state in session storage (expires on tab close)
+- On successful login, receive JWT token (30-day expiration)
+- Store JWT in localStorage
+- Include JWT in Authorization header for all admin requests
 - Password: environment variable `ADMIN_PASSWORD`
+- JWT secret: Uses `ADMIN_PASSWORD` as signing secret
 
 ### 3. Link Scraping
 **Requirements:**
@@ -121,16 +125,39 @@ CREATE TABLE recipes (
 
 **Field Details:**
 - `id`: Auto-incrementing primary key
-- `url`: Original recipe URL (required)
-- `title`: Scraped title (nullable)
-- `description`: Scraped description (nullable)
-- `image_url`: Scraped image URL (nullable)
-- `site_name`: Extracted domain name (nullable)
+- `url`: Original recipe URL (required, max 2048 chars)
+- `title`: Scraped title (nullable, truncated to 200 chars)
+- `description`: Scraped description (nullable, truncated to 500 chars)
+- `image_url`: Scraped image URL (nullable, max 2048 chars)
+- `site_name`: Extracted domain name (nullable, max 100 chars)
 - `created_at`: Timestamp of post
+
+**Validation Rules:**
+- URL must start with `http://` or `https://`
+- Duplicate URLs are allowed
+- Title and description are automatically truncated if they exceed limits
 
 ---
 
 ## API Endpoints
+
+### Standard Error Response Format
+
+All API errors follow this structure:
+```json
+{
+  "error": "Human-readable error message",
+  "code": "ERROR_CODE"
+}
+```
+
+Common error codes:
+- `INVALID_PASSWORD` - Authentication failed
+- `INVALID_TOKEN` - JWT token invalid or expired
+- `INVALID_URL` - URL format validation failed
+- `SCRAPING_FAILED` - Could not scrape recipe metadata
+- `NOT_FOUND` - Recipe not found
+- `SERVER_ERROR` - Internal server error
 
 ### Public Endpoints
 
@@ -157,22 +184,42 @@ CREATE TABLE recipes (
 
 **POST `/api/admin/auth`**
 - Request body: `{ "password": "secret123" }`
-- Returns: `{ "success": true }` or `{ "error": "Invalid password" }`
+- Validates password against `ADMIN_PASSWORD`
+- Returns JWT token valid for 30 days
+- Response (success):
+  ```json
+  {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "expiresIn": "30d"
+  }
+  ```
+- Response (error): `{ "error": "Invalid password" }`
 
 **POST `/api/admin/recipes`**
-- Headers: `Authorization: Bearer <password>`
+- Headers: `Authorization: Bearer <jwt_token>`
 - Request body: `{ "url": "https://recipe-url.com" }`
 - Process:
-  1. Validate password
-  2. Scrape URL metadata
-  3. Save to database
-  4. Return saved recipe object
+  1. Verify JWT token
+  2. Validate URL format (must start with http:// or https://)
+  3. Scrape URL metadata (10 second timeout)
+  4. Truncate fields: title (200 chars), description (500 chars)
+  5. Save to database
+  6. Return saved recipe object
 - Response: Same as recipe object above
+- Errors:
+  - (401): `{ "error": "Invalid or expired token", "code": "INVALID_TOKEN" }`
+  - (400): `{ "error": "Invalid URL format", "code": "INVALID_URL" }`
+  - (500): `{ "error": "Failed to scrape recipe", "code": "SCRAPING_FAILED" }`
+- **Note:** Duplicate URLs are allowed (user may want to post same recipe twice)
 
 **DELETE `/api/admin/recipes/:id`**
-- Headers: `Authorization: Bearer <password>`
+- Headers: `Authorization: Bearer <jwt_token>`
+- Verifies JWT token
 - Deletes recipe by ID
 - Response: `{ "success": true }`
+- Errors:
+  - (401): `{ "error": "Invalid or expired token", "code": "INVALID_TOKEN" }`
+  - (404): `{ "error": "Recipe not found", "code": "NOT_FOUND" }`
 
 ---
 
@@ -210,9 +257,10 @@ server/
 │   └── admin.js (admin API)
 ├── services/
 │   ├── scraper.js (URL metadata scraping)
-│   └── database.js (SQLite operations)
+│   ├── database.js (SQLite operations)
+│   └── auth.js (JWT generation and verification)
 ├── middleware/
-│   └── auth.js (password verification)
+│   └── verifyToken.js (JWT verification middleware)
 └── database.sqlite (SQLite file, persisted via Docker volume)
 ```
 
@@ -229,6 +277,29 @@ Deploy using Docker Compose on a Lightsail Ubuntu instance. This provides the be
 **Prerequisites:**
 - Docker and Docker Compose installed on Lightsail instance
 - Git for code deployment
+
+**Docker Compose Configuration:**
+```yaml
+# docker-compose.yml example structure
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - NODE_ENV=production
+    volumes:
+      - ./data:/app/data          # SQLite database persistence
+      - ./backups:/app/backups    # Backup directory
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/recipes"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+```
 
 **Deployment Steps:**
 
@@ -303,7 +374,11 @@ ADMIN_PASSWORD=your-secure-password-here
 # Optional
 PORT=3000
 NODE_ENV=production
-DATABASE_PATH=./database.sqlite
+DATABASE_PATH=./data/database.sqlite
+LOG_LEVEL=info                          # debug, info, warn, error
+CORS_ORIGIN=https://your-domain.com     # Use * for all in dev (not recommended for prod)
+RATE_LIMIT_ADMIN=10                     # Requests per minute for admin endpoints
+RATE_LIMIT_PUBLIC=60                    # Requests per minute for public endpoints
 ```
 
 ---
@@ -372,21 +447,156 @@ DATABASE_PATH=./database.sqlite
 ## Scraping Fallbacks
 
 When scraping fails, use these fallbacks:
-- **No image:** Use placeholder image (food-themed stock photo or solid color with icon)
-- **No title:** Use URL domain + "Recipe"
-- **No description:** Use "View this delicious recipe from [domain]"
-- **Timeout/Error:** Store URL anyway with minimal data
+- **No image:** `https://placehold.co/400x300/FF6B6B/FFFFFF?text=Recipe&font=quicksand`
+- **No title:** Extract domain + " Recipe" (e.g., "allrecipes.com Recipe")
+- **No description:** "View this delicious recipe from [domain]"
+- **Timeout/Error:** Store URL anyway with fallback values
+- **Invalid image URL:** Replace with placeholder on frontend if image fails to load
+
+**Scraping Configuration:**
+- Timeout: 10 seconds
+- User-Agent: `Mozilla/5.0 (compatible; HayleysBitchinKitchen/1.0)`
+- Follow redirects: Yes (max 3)
+- Accept invalid SSL certificates: No
 
 ---
 
 ## Security Considerations
 
 1. **Password Storage:** Never commit password to git (use `.env` file)
-2. **SQL Injection:** Use parameterized queries
-3. **XSS:** Sanitize displayed content
-4. **Rate Limiting:** Add rate limiting to admin endpoints (10 requests/minute)
-5. **CORS:** Configure appropriate CORS headers
-6. **HTTPS:** Use HTTPS in production (Let's Encrypt on Lightsail)
+2. **JWT Authentication:**
+   - Use ADMIN_PASSWORD as JWT signing secret
+   - 30-day token expiration for balance of security/convenience
+   - Tokens stored in localStorage (cleared on logout)
+   - **HTTPS is mandatory** - prevents token/password interception
+   - To revoke all tokens: change ADMIN_PASSWORD (forces re-login)
+3. **SQL Injection:** Use parameterized queries (SQLite supports `?` placeholders)
+4. **XSS:** Sanitize displayed content (especially recipe titles/descriptions)
+5. **Rate Limiting:**
+   - `/api/admin/*` endpoints: 10 requests per minute per IP
+   - `/api/recipes` endpoint: 60 requests per minute per IP
+   - Use `express-rate-limit` package
+6. **CORS Configuration:**
+   - Development: Allow `http://localhost:5173` (Vite dev server)
+   - Production: Allow your domain only (e.g., `https://hayleys-kitchen.com`)
+   - Credentials: Allow (needed for auth headers)
+7. **HTTPS:** Use HTTPS in production (Let's Encrypt on Lightsail) - **REQUIRED for JWT security**
+8. **Input Validation:** Validate and sanitize all user inputs (URLs, passwords)
+9. **Error Messages:** Don't leak sensitive information in error messages
+
+---
+
+## Authentication Implementation Details
+
+### JWT Token Generation (Login)
+```javascript
+const jwt = require('jsonwebtoken');
+
+// On successful password validation
+const token = jwt.sign(
+  { admin: true },
+  process.env.ADMIN_PASSWORD,
+  { expiresIn: '30d' }
+);
+```
+
+### JWT Token Verification (Protected Routes)
+```javascript
+const jwt = require('jsonwebtoken');
+
+try {
+  const token = req.headers.authorization?.split(' ')[1]; // Bearer <token>
+  const decoded = jwt.verify(token, process.env.ADMIN_PASSWORD);
+  next(); // Valid token, proceed
+} catch (error) {
+  res.status(401).json({ error: 'Invalid or expired token' });
+}
+```
+
+### Frontend Token Storage
+```javascript
+// After successful login
+localStorage.setItem('adminToken', token);
+
+// On admin API requests
+headers: {
+  'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+}
+
+// On logout
+localStorage.removeItem('adminToken');
+```
+
+---
+
+## Logging & Monitoring
+
+### Logging Requirements
+- Use `winston` or `pino` for structured logging
+- Log levels: ERROR, WARN, INFO, DEBUG
+- Log to: Console (Docker captures this)
+
+**What to log:**
+- All admin actions (POST/DELETE recipes) with timestamp
+- Authentication attempts (success/failure)
+- Scraping errors with URL
+- Server startup/shutdown
+- Rate limit violations
+
+**Log format:**
+```json
+{
+  "timestamp": "2026-02-04T10:30:00Z",
+  "level": "info",
+  "action": "recipe_created",
+  "url": "https://example.com/recipe",
+  "ip": "192.168.1.1"
+}
+```
+
+**Production:**
+- View logs: `docker-compose logs -f`
+- Rotate logs: Docker handles rotation (max 10 files, 10MB each)
+
+### Monitoring
+- Monitor disk space (SQLite database growth)
+- Monitor container health (Docker healthcheck)
+- Basic uptime monitoring (optional: UptimeRobot free tier)
+
+---
+
+## Backup & Maintenance
+
+### Database Backup
+**Automated daily backups:**
+```bash
+# Add to crontab on Lightsail instance
+0 2 * * * docker exec hbk-backend sqlite3 /app/database.sqlite ".backup /app/backups/backup-$(date +\%Y\%m\%d).sqlite"
+
+# Retain last 7 days
+0 3 * * * find /home/ubuntu/hayleys-kitchen/backups -name "backup-*.sqlite" -mtime +7 -delete
+```
+
+**Manual backup:**
+```bash
+# From Lightsail instance
+cp /home/ubuntu/hayleys-kitchen/data/database.sqlite ~/backup-$(date +%Y%m%d).sqlite
+
+# Download to local machine
+scp ubuntu@YOUR_IP:~/backup-*.sqlite ./
+```
+
+### Restore from Backup
+```bash
+# Stop containers
+docker-compose down
+
+# Replace database file
+cp backup-20260204.sqlite /home/ubuntu/hayleys-kitchen/data/database.sqlite
+
+# Restart
+docker-compose up -d
+```
 
 ---
 

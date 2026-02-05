@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: hbk-app
+    ports:
+      - "3000:3000"
+    environment:
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - NODE_ENV=production
+      - DATABASE_PATH=/app/data/database.sqlite
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - RATE_LIMIT_ADMIN=${RATE_LIMIT_ADMIN:-10}
+      - RATE_LIMIT_PUBLIC=${RATE_LIMIT_PUBLIC:-60}
+    volumes:
+      - ./data:/app/data              # SQLite database persistence
+      - ./backups:/app/backups        # Backup directory
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/recipes"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
