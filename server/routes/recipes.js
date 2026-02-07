@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAllRecipes } from '../services/database.js';
+import { getAllRecipes, getRecipeBySlug } from '../services/database.js';
 
 const router = express.Router();
 
@@ -11,6 +11,28 @@ router.get('/', (req, res) => {
   } catch (error) {
     res.status(500).json({ 
       error: 'Failed to fetch recipes', 
+      code: 'SERVER_ERROR' 
+    });
+  }
+});
+
+// GET /api/recipes/:slug - Get recipe by slug
+router.get('/:slug', (req, res) => {
+  try {
+    const { slug } = req.params;
+    const recipe = getRecipeBySlug(slug);
+    
+    if (!recipe) {
+      return res.status(404).json({ 
+        error: 'Recipe not found', 
+        code: 'NOT_FOUND' 
+      });
+    }
+    
+    res.json({ recipe });
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to fetch recipe', 
       code: 'SERVER_ERROR' 
     });
   }

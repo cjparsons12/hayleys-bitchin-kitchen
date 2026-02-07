@@ -33,7 +33,7 @@ export default {
   },
   methods: {
     openRecipe() {
-      window.open(this.recipe.url, '_blank');
+      this.$router.push(`/recipe/${this.recipe.slug}`);
     },
     
     handleImageError(event) {
