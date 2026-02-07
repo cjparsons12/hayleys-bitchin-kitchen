@@ -31,29 +31,12 @@ db.exec(`
     description TEXT,
     image_url TEXT,
     site_name TEXT,
-    slug TEXT,
+    slug TEXT UNIQUE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )
 `);
 
 logger.info('Database tables initialized');
-
-// Check if slug column exists, add it if not
-const checkSlugColumn = () => {
-  const columns = db.pragma('table_info(recipes)');
-  const hasSlug = columns.some(col => col.name === 'slug');
-  
-  if (!hasSlug) {
-    logger.info('Adding slug column to recipes table');
-    // Note: SQLite doesn't support adding UNIQUE columns to existing tables
-    // We'll enforce uniqueness in application code instead
-    db.exec('ALTER TABLE recipes ADD COLUMN slug TEXT');
-    logger.info('Slug column added successfully');
-  }
-};
-
-// Run column check/migration
-checkSlugColumn();
 
 // Utility function to generate URL-friendly slug from title
 export const generateSlug = (title) => {
@@ -83,26 +66,6 @@ const generateUniqueSlug = (title) => {
   
   return slug;
 };
-
-// Migration: Generate slugs for existing recipes without slugs
-const migrateExistingRecipes = () => {
-  const recipesWithoutSlug = db.prepare('SELECT id, title FROM recipes WHERE slug IS NULL').all();
-  
-  if (recipesWithoutSlug.length > 0) {
-    logger.info(`Generating slugs for ${recipesWithoutSlug.length} existing recipes`);
-    const updateStmt = db.prepare('UPDATE recipes SET slug = ? WHERE id = ?');
-    
-    for (const recipe of recipesWithoutSlug) {
-      const slug = generateUniqueSlug(recipe.title || 'recipe');
-      updateStmt.run(slug, recipe.id);
-    }
-    
-    logger.info('Slug migration complete');
-  }
-};
-
-// Run migration
-migrateExistingRecipes();
 
 // Database operations
 export const getAllRecipes = () => {
