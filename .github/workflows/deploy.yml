@@ -10,6 +10,7 @@ jobs:
   deploy:
     name: Deploy to Lightsail
     runs-on: ubuntu-latest
+    environment: hayleys-bitchin-kitchen-prod
     
     steps:
       - name: Checkout code
