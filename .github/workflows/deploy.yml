@@ -58,7 +58,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST << 'EOF'
             cd ${{ secrets.PROJECT_PATH }}
-            docker-compose -f docker-compose.prod.yml ps
+            docker compose -f docker-compose.prod.yml ps
           EOF
       
       - name: Cleanup SSH

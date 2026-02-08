@@ -47,7 +47,7 @@ If you're running with Docker Compose (which you already have), the meta tags ar
 
 ```bash
 # If not already running
-docker-compose up -d
+docker compose up -d
 ```
 
 Open a recipe page and **view the page source** (right-click → "View Page Source", NOT DevTools):
@@ -81,8 +81,8 @@ If you have GitHub Actions set up, deployment happens automatically. Otherwise, 
 ```bash
 cd ~/hayleys-bitchin-kitchen
 git pull origin main
-docker-compose -f docker-compose.prod.yml down
-docker-compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 ### 2. Verify Meta Tags in Production
@@ -133,8 +133,8 @@ Instagram doesn't have a public debugger, but you can test:
 
 **Solution**:
 - Make sure you're checking "View Page Source" not DevTools Elements tab
-- If using Docker: Ensure containers are running with `docker-compose ps`
-- Check server logs: `docker-compose logs -f app`
+- If using Docker: Ensure containers are running with `docker compose ps`
+- Check server logs: `docker compose logs -f app`
 - Verify you have at least one recipe in the database with a valid slug
 
 ### Image not showing in preview
@@ -163,7 +163,7 @@ Instagram doesn't have a public debugger, but you can test:
 
 **Solution**:
 - Update `DOMAIN=yourdomain.com` in your production `.env` file
-- Restart: `docker-compose -f docker-compose.prod.yml restart app`
+- Restart: `docker compose -f docker-compose.prod.yml restart app`
 
 ### Seeing tags in DevTools but not View Source
 

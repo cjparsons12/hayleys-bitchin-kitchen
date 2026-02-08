@@ -63,7 +63,7 @@ nano .env  # only change ADMIN_PASSWORD and DOMAIN
 # Old way: Manual Caddy setup, manual cert renewal
 
 # New way:
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 # HTTPS just works! Automatic cert renewal included.
 ```
 
@@ -71,8 +71,8 @@ docker-compose -f docker-compose.prod.yml up -d
 ```bash
 # Old way:
 git pull
-docker-compose down
-docker-compose up -d --build
+docker compose down
+docker compose up -d --build
 # Hope nothing breaks...
 
 # New way:
@@ -111,7 +111,7 @@ git push origin main
 
 2. **Deploy with HTTPS:**
    ```bash
-   docker-compose -f docker-compose.prod.yml up -d --build
+   docker compose -f docker-compose.prod.yml up -d --build
    ```
 
 3. **Set up automated backups:**
@@ -169,8 +169,8 @@ If you have an existing deployment:
 
 3. **Switch to production compose:**
    ```bash
-   docker-compose down
-   docker-compose -f docker-compose.prod.yml up -d --build
+   docker compose down
+   docker compose -f docker-compose.prod.yml up -d --build
    ```
 
 4. **Set up new automation:**

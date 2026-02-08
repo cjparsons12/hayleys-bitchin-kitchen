@@ -88,7 +88,7 @@ restore_backup() {
     
     log_info "Database restored successfully!"
     log_warn "Remember to restart the application for changes to take effect:"
-    log_warn "  docker-compose -f docker-compose.prod.yml restart"
+    log_warn "  docker compose -f docker-compose.prod.yml restart"
 }
 
 # Main script

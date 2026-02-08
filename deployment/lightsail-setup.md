@@ -86,8 +86,8 @@ Complete guide for deploying Hayley's Bitchin Kitchen to AWS Lightsail using Doc
 # Update system
 sudo apt update && sudo apt upgrade -y
 
-# Install Docker
-sudo apt install -y docker.io docker-compose
+# Install Docker and Docker Compose v2 plugin
+sudo apt install -y docker.io docker-compose-plugin
 
 # Add user to docker group (avoid sudo)
 sudo usermod -aG docker ubuntu
@@ -98,7 +98,7 @@ exit
 
 # Verify installation
 docker --version
-docker-compose --version
+docker compose version
 ```
 
 ---
@@ -165,10 +165,10 @@ mkdir -p data backups
 
 ```bash
 # Build and start with production compose file (includes Caddy)
-docker-compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml up -d --build
 
 # View logs
-docker-compose -f docker-compose.prod.yml logs -f
+docker compose -f docker-compose.prod.yml logs -f
 
 # Press Ctrl+C to exit logs
 ```
@@ -177,7 +177,7 @@ docker-compose -f docker-compose.prod.yml logs -f
 
 ```bash
 # Build and start with basic compose file
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 The production setup includes:
@@ -191,7 +191,7 @@ The production setup includes:
 
 ```bash
 # Check container status
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml ps
 
 # Test API (local)
 curl http://localhost:3000/api/recipes
@@ -386,11 +386,11 @@ cd ~/hayleys-bitchin-kitchen
 git pull origin main
 
 # Rebuild and restart
-docker-compose -f docker-compose.prod.yml down
-docker-compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml up -d --build
 
 # View logs
-docker-compose -f docker-compose.prod.yml logs -f
+docker compose -f docker-compose.prod.yml logs -f
 ```
 
 ---
@@ -401,22 +401,22 @@ docker-compose -f docker-compose.prod.yml logs -f
 
 ```bash
 # All services (production)
-docker-compose -f docker-compose.prod.yml logs -f
+docker compose -f docker-compose.prod.yml logs -f
 
 # Just app
-docker-compose -f docker-compose.prod.yml logs -f app
+docker compose -f docker-compose.prod.yml logs -f app
 
 # Just Caddy (HTTPS proxy)
-docker-compose -f docker-compose.prod.yml logs -f caddy
+docker compose -f docker-compose.prod.yml logs -f caddy
 
 # Last 100 lines
-docker-compose -f docker-compose.prod.yml logs --tail=100 app
+docker compose -f docker-compose.prod.yml logs --tail=100 app
 ```
 
 ### Check Container Status
 
 ```bash
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml ps
 ```
 
 ### Check Disk Space
@@ -430,13 +430,13 @@ du -sh ~/hayleys-bitchin-kitchen/backups/
 ### Restart Services
 
 ```bash
-docker-compose -f docker-compose.prod.yml restart
+docker compose -f docker-compose.prod.yml restart
 ```
 
 ### Stop Services
 
 ```bash
-docker-compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml down
 ```
 
 ---
@@ -459,7 +459,7 @@ docker-compose -f docker-compose.prod.yml down
 
 ```bash
 # Check logs
-docker-compose logs app
+docker compose logs app
 
 # Common issues:
 # - Missing ADMIN_PASSWORD in .env
@@ -471,7 +471,7 @@ docker-compose logs app
 
 ```bash
 # Check if container is running
-docker-compose ps
+docker compose ps
 
 # Check firewall rules in Lightsail console
 # Verify ports 80 and 443 are open
@@ -497,7 +497,7 @@ find ~/hayleys-bitchin-kitchen/backups -mtime +7 -delete
 
 ```bash
 # Check Caddy logs
-docker-compose logs caddy
+docker compose logs caddy
 
 # Ensure:
 # - Domain DNS points to server
@@ -509,14 +509,14 @@ docker-compose logs caddy
 
 ```bash
 # Stop containers
-docker-compose down
+docker compose down
 
 # Restore from backup
 cp ~/hayleys-bitchin-kitchen/backups/backup-20260204.sqlite \
    ~/hayleys-bitchin-kitchen/data/database.sqlite
 
 # Restart
-docker-compose up -d
+docker compose up -d
 ```
 
 ---
@@ -560,9 +560,9 @@ Budget option with 512 MB plan: **$3.50/month**
 
 If you encounter issues:
 
-1. Check logs: `docker-compose logs -f`
+1. Check logs: `docker compose logs -f`
 2. Verify environment variables: `cat .env`
-3. Check container status: `docker-compose ps`
+3. Check container status: `docker compose ps`
 4. Review firewall rules in Lightsail console
 5. Test locally: `curl http://localhost:3000/api/recipes`
 

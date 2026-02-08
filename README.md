@@ -76,13 +76,13 @@ This will start:
 echo "ADMIN_PASSWORD=your-secure-password" > .env
 
 # Build and start containers
-docker-compose up -d --build
+docker compose up -d --build
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Stop containers
-docker-compose down
+docker compose down
 ```
 
 Access the application at `http://localhost:3000`
@@ -97,7 +97,7 @@ Quick overview:
 2. Install Docker and Docker Compose
 3. Clone your repository
 4. Create `.env` file with production settings
-5. Run `docker-compose up -d --build`
+5. Run `docker compose up -d --build`
 6. Configure domain and HTTPS (optional but recommended)
 
 ## Project Structure
@@ -191,13 +191,13 @@ docker exec hbk-app sqlite3 /app/data/database.sqlite ".backup /app/backups/back
 
 ```bash
 # Stop containers
-docker-compose down
+docker compose down
 
 # Replace database
 cp ./backups/backup-20260204.sqlite ./data/database.sqlite
 
 # Restart
-docker-compose up -d
+docker compose up -d
 ```
 
 ## Troubleshooting
@@ -206,7 +206,7 @@ docker-compose up -d
 
 - Some websites block scraping or have non-standard metadata
 - The app will use fallback values (placeholder image, domain name as title)
-- Check server logs for specific errors: `docker-compose logs -f`
+- Check server logs for specific errors: `docker compose logs -f`
 
 ### Images not loading
 

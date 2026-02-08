@@ -86,7 +86,7 @@ fi
 
 # Step 4: Build new image
 log_info "Building Docker image..."
-if docker-compose -f docker-compose.prod.yml build --no-cache; then
+if docker compose -f docker-compose.prod.yml build --no-cache; then
     log_info "Docker image built successfully"
 else
     log_error "Failed to build Docker image"
@@ -96,9 +96,13 @@ fi
 # Step 5: Zero-downtime deployment
 log_info "Performing zero-downtime deployment..."
 
+# Stop and remove old containers
+log_info "Stopping old containers..."
+docker compose -f docker-compose.prod.yml down || true
+
 # Start new containers
 log_info "Starting updated containers..."
-if docker-compose -f docker-compose.prod.yml up -d; then
+if docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans; then
     log_info "Containers started successfully"
 else
     log_error "Failed to start containers"
@@ -111,7 +115,7 @@ MAX_WAIT=60
 WAIT_COUNT=0
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-    if docker-compose -f docker-compose.prod.yml ps | grep -q "healthy"; then
+    if docker compose -f docker-compose.prod.yml ps | grep -q "healthy"; then
         log_info "Application is healthy!"
         break
     fi
@@ -127,7 +131,7 @@ echo
 
 if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
     log_error "Health check timeout! Application may not be running correctly."
-    log_warn "Check logs with: docker-compose -f docker-compose.prod.yml logs"
+    log_warn "Check logs with: docker compose -f docker-compose.prod.yml logs"
     exit 1
 fi
 
@@ -143,6 +147,6 @@ echo "Branch: $CURRENT_BRANCH"
 echo "Commit: $(git rev-parse --short HEAD)"
 echo "Time: $(date)"
 echo
-echo "To view logs: docker-compose -f docker-compose.prod.yml logs -f"
-echo "To check status: docker-compose -f docker-compose.prod.yml ps"
+echo "To view logs: docker compose -f docker-compose.prod.yml logs -f"
+echo "To check status: docker compose -f docker-compose.prod.yml ps"
 echo
